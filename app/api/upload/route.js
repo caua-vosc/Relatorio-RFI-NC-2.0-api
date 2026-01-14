@@ -14,22 +14,24 @@ export async function POST(request) {
     const { siteId, state } = await request.json();
 
     if (!siteId || !state) {
-      return Response.json(
-        { error: "Dados inválidos" },
+      return new Response(
+        JSON.stringify({ error: "Dados inválidos" }),
         {
           status: 400,
-          headers: { "Access-Control-Allow-Origin": "https://caua-vosc.github.io" }
+          headers: {
+            "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
+          }
         }
       );
     }
 
-    const NC_URL = process.env.NEXTCLOUD_URL;
+    const NC_URL = process.env.NEXTCLOUD_URL; // DEVE terminar com /remote.php/dav
     const USER = process.env.NEXTCLOUD_USER;
     const PASS = process.env.NEXTCLOUD_PASS;
 
     if (!NC_URL || !USER || !PASS) {
-      return Response.json(
-        { error: "Variáveis ausentes" },
+      return new Response(
+        JSON.stringify({ error: "Variáveis de ambiente ausentes" }),
         { status: 500 }
       );
     }
@@ -37,33 +39,52 @@ export async function POST(request) {
     const auth = Buffer.from(`${USER}:${PASS}`).toString("base64");
 
     for (const secao of Object.keys(state)) {
-      const pasta = `${NC_URL}/remote.php/dav/files/${USER}/Checklist/${siteId}/${secao}`;
+      const pasta =
+        `${NC_URL}/files/${USER}/Checklist/${siteId}/${secao}`;
 
-      await fetch(pasta, {
+      /* ===== CRIA PASTA ===== */
+      const mkcol = await fetch(pasta, {
         method: "MKCOL",
-        headers: { Authorization: `Basic ${auth}` }
-      }).catch(() => {});
+        headers: {
+          Authorization: `Basic ${auth}`
+        }
+      });
 
+      if (![201, 405].includes(mkcol.status)) {
+        throw new Error(
+          `Erro ao criar pasta (${secao}): ${mkcol.status}`
+        );
+      }
+
+      /* ===== UPLOAD DAS IMAGENS ===== */
       for (let i = 0; i < state[secao].length; i++) {
-        const buffer = Buffer.from(
-          state[secao][i].split(",")[1],
-          "base64"
+        const base64 = state[secao][i].split(",")[1];
+        const buffer = Buffer.from(base64, "base64");
+
+        const upload = await fetch(
+          `${pasta}/foto${i + 1}.jpg`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Basic ${auth}`,
+              "Content-Type": "image/jpeg"
+            },
+            body: buffer
+          }
         );
 
-        await fetch(`${pasta}/foto${i + 1}.jpg`, {
-          method: "PUT",
-          headers: {
-            Authorization: `Basic ${auth}`,
-            "Content-Type": "image/jpeg"
-          },
-          body: buffer
-        });
+        if (!upload.ok) {
+          throw new Error(
+            `Erro ao enviar imagem (${secao}): ${upload.status}`
+          );
+        }
       }
     }
 
-    return Response.json(
-      { success: true },
+    return new Response(
+      JSON.stringify({ success: true }),
       {
+        status: 200,
         headers: {
           "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
         }
@@ -71,9 +92,13 @@ export async function POST(request) {
     );
 
   } catch (err) {
-    console.error(err);
-    return Response.json(
-      { error: "Erro interno" },
+    console.error("UPLOAD ERROR:", err);
+
+    return new Response(
+      JSON.stringify({
+        error: "Falha no upload",
+        detail: err.message
+      }),
       {
         status: 500,
         headers: {
