@@ -1,5 +1,5 @@
 {
-  "name": "checklist-api",
-  "version": "1.0.0",
+  "name": "relatorio-rfi-nc",
+  "private": true,
   "type": "module"
 }
