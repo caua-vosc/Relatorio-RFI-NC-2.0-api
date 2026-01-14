@@ -13,8 +13,7 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const { siteId, state } = body;
+    const { siteId, state } = await request.json();
 
     if (!siteId || !state) {
       return new Response(
@@ -64,7 +63,7 @@ export async function POST(request) {
         },
       }
     );
-  } catch (err) {
+  } catch {
     return new Response(
       JSON.stringify({ error: "Erro interno" }),
       {
