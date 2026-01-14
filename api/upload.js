@@ -1,14 +1,15 @@
 export default async function handler(req, res) {
 
-    // ===== CORS =====
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    // ===== CORS (ANTES DE QUALQUER COISA) =====
+    res.setHeader("Access-Control-Allow-Origin", "https://caua-vosc.github.io");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Max-Age", "86400");
 
     if (req.method === "OPTIONS") {
         return res.status(200).end();
     }
-    // =================
+    // ========================================
 
     try {
         if (req.method !== "POST") {
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
 
         const auth = Buffer.from(`${USER}:${PASS}`).toString("base64");
 
-        for (const secao in state) {
+        for (const secao of Object.keys(state)) {
             const pasta = `${NEXTCLOUD_URL}/remote.php/dav/files/${USER}/Checklist/${siteId}/${secao}`;
 
             await fetch(pasta, {
@@ -56,7 +57,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
 
     } catch (err) {
-        console.error("ERRO:", err);
+        console.error("ERRO BACKEND:", err);
         return res.status(500).json({ error: "Erro interno" });
     }
 }
