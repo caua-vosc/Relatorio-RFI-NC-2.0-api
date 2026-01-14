@@ -1,11 +1,21 @@
 export default async function handler(req, res) {
+
+    // ===== CORS =====
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+        return res.status(200).end();
+    }
+    // =================
+
     try {
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
         const { siteId, state } = req.body;
-
         if (!siteId || !state) {
             return res.status(400).json({ error: "Dados inválidos" });
         }
@@ -23,7 +33,6 @@ export default async function handler(req, res) {
         for (const secao in state) {
             const pasta = `${NEXTCLOUD_URL}/remote.php/dav/files/${USER}/Checklist/${siteId}/${secao}`;
 
-            // cria pasta (ignora erro se já existir)
             await fetch(pasta, {
                 method: "MKCOL",
                 headers: { Authorization: `Basic ${auth}` }
@@ -33,9 +42,7 @@ export default async function handler(req, res) {
                 const base64 = state[secao][i].split(",")[1];
                 const buffer = Buffer.from(base64, "base64");
 
-                const arquivo = `${pasta}/foto${i + 1}.jpg`;
-
-                await fetch(arquivo, {
+                await fetch(`${pasta}/foto${i + 1}.jpg`, {
                     method: "PUT",
                     headers: {
                         Authorization: `Basic ${auth}`,
@@ -48,8 +55,8 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true });
 
-    } catch (error) {
-        console.error("ERRO BACKEND:", error);
-        return res.status(500).json({ error: "Erro interno no servidor" });
+    } catch (err) {
+        console.error("ERRO:", err);
+        return res.status(500).json({ error: "Erro interno" });
     }
 }
