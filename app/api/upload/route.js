@@ -10,80 +10,67 @@ export async function OPTIONS() {
 }
 
 export async function POST(request) {
+  const cors = {
+    "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
+  };
+
   try {
     const { siteId, state } = await request.json();
 
     if (!siteId || !state) {
       return new Response(
         JSON.stringify({ error: "Dados inválidos" }),
-        {
-          status: 400,
-          headers: {
-            "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
-          }
-        }
+        { status: 400, headers: cors }
       );
     }
 
-    const NC_URL = process.env.NEXTCLOUD_URL;   // https://gio.it.tab.digital/remote.php/dav/files/caua
-    const USER   = process.env.NEXTCLOUD_USER;
-    const PASS   = process.env.NEXTCLOUD_PASS;
+    // ===== CONFIG CORRETA =====
+    const NC_URL = "https://gio.it.tab.digital/remote.php/dav";
+    const USER = "caua";
+    const PASS = "mTykL-rTXiG-84J6d-s7toE-QiAXz";
 
-    if (!NC_URL || !USER || !PASS) {
-      return new Response(
-        JSON.stringify({ error: "Variáveis de ambiente ausentes" }),
-        {
-          status: 500,
-          headers: {
-            "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
-          }
-        }
-      );
-    }
+    const auth =
+      Buffer.from(`${USER}:${PASS}`).toString("base64");
 
-    const auth = Buffer.from(`${USER}:${PASS}`).toString("base64");
-
-    // ===== PARA CADA SEÇÃO DO CHECKLIST =====
     for (const secao of Object.keys(state)) {
 
-      // 👉 URL corrigida (sem duplicar /files/caua)
-      const pasta = `${NC_URL}/Checklist/${siteId}/${secao}`;
+      const pasta =
+        `${NC_URL}/files/${USER}/Checklist/${siteId}/${secao}`;
 
-      // ===== CRIAR PASTA =====
-      const mkcol = await fetch(pasta, {
+      console.log("Criando pasta:", pasta);
+
+      await fetch(pasta, {
         method: "MKCOL",
         headers: {
           Authorization: `Basic ${auth}`
         }
       });
 
-      if (![201, 405].includes(mkcol.status)) {
-        throw new Error(
-          `Erro ao criar pasta (${secao}): ${mkcol.status}`
-        );
-      }
-
-      // ===== UPLOAD DAS IMAGENS =====
       for (let i = 0; i < state[secao].length; i++) {
 
-        const base64 = state[secao][i].split(",")[1];
-        const buffer = Buffer.from(base64, "base64");
+        const base64 =
+          state[secao][i].split(",")[1];
 
-        const upload = await fetch(
-          `${pasta}/foto${i + 1}.jpg`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Basic ${auth}`,
-              "Content-Type": "image/jpeg"
-            },
-            body: buffer
-          }
-        );
+        const buffer =
+          Buffer.from(base64, "base64");
 
-        if (!upload.ok) {
+        const destino =
+          `${pasta}/foto${i + 1}.jpg`;
+
+        console.log("Enviando:", destino);
+
+        const up = await fetch(destino, {
+          method: "PUT",
+          headers: {
+            Authorization: `Basic ${auth}`,
+            "Content-Type": "image/jpeg"
+          },
+          body: buffer
+        });
+
+        if (!up.ok) {
           throw new Error(
-            `Erro ao enviar imagem (${secao}): ${upload.status}`
+            `Nextcloud respondeu: ${up.status}`
           );
         }
       }
@@ -91,29 +78,15 @@ export async function POST(request) {
 
     return new Response(
       JSON.stringify({ success: true }),
-      {
-        status: 200,
-        headers: {
-          "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
-        }
-      }
+      { status: 200, headers: cors }
     );
 
   } catch (err) {
-
-    console.error("UPLOAD ERROR:", err);
-
     return new Response(
       JSON.stringify({
-        error: "Falha no upload",
-        detalhe: err.message
+        error: err.message
       }),
-      {
-        status: 500,
-        headers: {
-          "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
-        }
-      }
+      { status: 500, headers: cors }
     );
   }
 }
