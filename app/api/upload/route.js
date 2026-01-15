@@ -25,24 +25,30 @@ export async function POST(request) {
       );
     }
 
-    const NC_URL = process.env.NEXTCLOUD_URL; // DEVE terminar com /remote.php/dav
+    const NC_URL = process.env.NEXTCLOUD_URL;
     const USER = process.env.NEXTCLOUD_USER;
     const PASS = process.env.NEXTCLOUD_PASS;
 
     if (!NC_URL || !USER || !PASS) {
       return new Response(
         JSON.stringify({ error: "Variáveis de ambiente ausentes" }),
-        { status: 500 }
+        {
+          status: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "https://caua-vosc.github.io"
+          }
+        }
       );
     }
 
     const auth = Buffer.from(`${USER}:${PASS}`).toString("base64");
 
     for (const secao of Object.keys(state)) {
+
       const pasta =
         `${NC_URL}/files/${USER}/Checklist/${siteId}/${secao}`;
 
-      /* ===== CRIA PASTA ===== */
+      // ===== CRIA PASTA =====
       const mkcol = await fetch(pasta, {
         method: "MKCOL",
         headers: {
@@ -56,8 +62,9 @@ export async function POST(request) {
         );
       }
 
-      /* ===== UPLOAD DAS IMAGENS ===== */
+      // ===== UPLOAD DAS IMAGENS =====
       for (let i = 0; i < state[secao].length; i++) {
+
         const base64 = state[secao][i].split(",")[1];
         const buffer = Buffer.from(base64, "base64");
 
@@ -92,6 +99,7 @@ export async function POST(request) {
     );
 
   } catch (err) {
+
     console.error("UPLOAD ERROR:", err);
 
     return new Response(
