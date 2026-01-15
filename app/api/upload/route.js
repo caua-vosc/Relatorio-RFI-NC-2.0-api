@@ -25,9 +25,9 @@ export async function POST(request) {
       );
     }
 
-    const NC_URL = process.env.NEXTCLOUD_URL;
-    const USER = process.env.NEXTCLOUD_USER;
-    const PASS = process.env.NEXTCLOUD_PASS;
+    const NC_URL = process.env.NEXTCLOUD_URL;   // https://gio.it.tab.digital/remote.php/dav/files/caua
+    const USER   = process.env.NEXTCLOUD_USER;
+    const PASS   = process.env.NEXTCLOUD_PASS;
 
     if (!NC_URL || !USER || !PASS) {
       return new Response(
@@ -43,12 +43,13 @@ export async function POST(request) {
 
     const auth = Buffer.from(`${USER}:${PASS}`).toString("base64");
 
+    // ===== PARA CADA SEÇÃO DO CHECKLIST =====
     for (const secao of Object.keys(state)) {
 
-      const pasta =
-        `${NC_URL}/files/${USER}/Checklist/${siteId}/${secao}`;
+      // 👉 URL corrigida (sem duplicar /files/caua)
+      const pasta = `${NC_URL}/Checklist/${siteId}/${secao}`;
 
-      // ===== CRIA PASTA =====
+      // ===== CRIAR PASTA =====
       const mkcol = await fetch(pasta, {
         method: "MKCOL",
         headers: {
@@ -105,7 +106,7 @@ export async function POST(request) {
     return new Response(
       JSON.stringify({
         error: "Falha no upload",
-        detail: err.message
+        detalhe: err.message
       }),
       {
         status: 500,
@@ -116,3 +117,4 @@ export async function POST(request) {
     );
   }
 }
+
